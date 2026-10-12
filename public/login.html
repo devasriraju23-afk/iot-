@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login – Smart Door Security System</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="login-page">
+
+  <!-- Simulation badge -->
+  <div class="sim-badge-top">
+    <i class="fa fa-flask"></i> SOFTWARE SIMULATION MODE – No physical hardware required
+  </div>
+
+  <div class="login-wrapper">
+
+    <!-- Branding -->
+    <div class="login-brand">
+      <div class="login-logo">
+        <i class="fa fa-shield-halved"></i>
+      </div>
+      <h1 class="login-title">SmartDoor<span>Security</span></h1>
+      <p class="login-subtitle">Remote Monitoring &amp; Control System</p>
+    </div>
+
+    <!-- Card -->
+    <div class="login-card">
+      <h2>Sign In</h2>
+      <p class="login-card-sub">Enter your credentials to access the dashboard</p>
+
+      <!-- Error / info messages -->
+      <div id="loginAlert" class="alert hidden"></div>
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="username">
+            <i class="fa fa-user"></i> Username
+          </label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Enter username"
+            autocomplete="username"
+            required
+            maxlength="50"
+          />
+          <span class="field-error" id="usernameError"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="password">
+            <i class="fa fa-lock"></i> Password
+          </label>
+          <div class="password-wrap">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Enter password"
+              autocomplete="current-password"
+              required
+              maxlength="100"
+            />
+            <button type="button" class="toggle-pw" aria-label="Toggle password visibility" onclick="togglePassword()">
+              <i class="fa fa-eye" id="pwIcon"></i>
+            </button>
+          </div>
+          <span class="field-error" id="passwordError"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="loginBtn">
+          <span id="loginBtnText"><i class="fa fa-right-to-bracket"></i> Sign In</span>
+          <span id="loginBtnLoader" class="hidden"><i class="fa fa-spinner fa-spin"></i> Signing in…</span>
+        </button>
+      </form>
+
+      <!-- Demo credentials hint -->
+      <div class="demo-hint">
+        <p><i class="fa fa-circle-info"></i> Demo Credentials</p>
+        <div class="demo-creds">
+          <div>
+            <span class="badge badge-admin">Admin</span>
+            <code>admin</code> / <code>admin123</code>
+          </div>
+          <div>
+            <span class="badge badge-user">User</span>
+            <code>demo</code> / <code>demo123</code>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm mt-1" onclick="fillAdmin()">Use Admin</button>
+        <button class="btn btn-ghost btn-sm mt-1" onclick="fillDemo()">Use Demo</button>
+      </div>
+    </div>
+
+    <p class="login-footer">
+      &copy; 2026 SmartDoor Security &nbsp;|&nbsp; College Project &nbsp;|&nbsp;
+      <span class="sim-text">Simulation Mode</span>
+    </p>
+  </div>
+
+  <script>
+    // Redirect to dashboard if already logged in
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.loggedIn) window.location.href = '/index.html'; })
+      .catch(() => {});
+
+    function togglePassword() {
+      const pw   = document.getElementById('password');
+      const icon = document.getElementById('pwIcon');
+      if (pw.type === 'password') {
+        pw.type = 'text';
+        icon.className = 'fa fa-eye-slash';
+      } else {
+        pw.type = 'password';
+        icon.className = 'fa fa-eye';
+      }
+    }
+
+    function fillAdmin() {
+      document.getElementById('username').value = 'admin';
+      document.getElementById('password').value = 'admin123';
+    }
+    function fillDemo() {
+      document.getElementById('username').value = 'demo';
+      document.getElementById('password').value = 'demo123';
+    }
+
+    function showAlert(msg, type = 'error') {
+      const el = document.getElementById('loginAlert');
+      el.textContent = msg;
+      el.className = `alert alert-${type}`;
+    }
+    function hideAlert() {
+      document.getElementById('loginAlert').className = 'alert hidden';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAlert();
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      // Client-side validation
+      let valid = true;
+      document.getElementById('usernameError').textContent = '';
+      document.getElementById('passwordError').textContent = '';
+
+      if (!username) {
+        document.getElementById('usernameError').textContent = 'Username is required.';
+        valid = false;
+      }
+      if (!password) {
+        document.getElementById('passwordError').textContent = 'Password is required.';
+        valid = false;
+      }
+      if (!valid) return;
+
+      // Show loader
+      document.getElementById('loginBtnText').classList.add('hidden');
+      document.getElementById('loginBtnLoader').classList.remove('hidden');
+      document.getElementById('loginBtn').disabled = true;
+
+      try {
+        const res  = await fetch('/api/auth/login', {
+          method:      'POST',
+          headers:     { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body:        JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert(`Welcome, ${data.username}! Redirecting…`, 'success');
+          setTimeout(() => { window.location.href = '/index.html'; }, 800);
+        } else {
+          showAlert(data.error || 'Login failed. Please try again.');
+        }
+      } catch {
+        showAlert('Network error. Is the server running?');
+      } finally {
+        document.getElementById('loginBtnText').classList.remove('hidden');
+        document.getElementById('loginBtnLoader').classList.add('hidden');
+        document.getElementById('loginBtn').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
